@@ -1,0 +1,37 @@
+# Satu Application untuk setiap folder services/<namespace>/<service>/, yang
+# ditulis Jenkins (servicePipeline) dari folder deploy/ repo service. Service
+# baru muncul sendiri, dan folder yang dihapus membuang Application beserta
+# isinya (finalizer), kecuali objek yang ditandai Delete=false seperti volume
+# data.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: services
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/nurulhidayyah/platform-gitops.git
+        revision: main
+        directories:
+          - path: services/*/*
+  template:
+    metadata:
+      name: "{{ index .path.segments 1 }}-{{ .path.basename }}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: tenants
+      source:
+        repoURL: https://github.com/nurulhidayyah/platform-gitops.git
+        targetRevision: main
+        path: "{{ .path.path }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ index .path.segments 1 }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

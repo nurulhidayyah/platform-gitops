@@ -1,6 +1,6 @@
 # timesheet-app. Datanya (SQLite dan template aktif) tinggal di volume, jadi
 # hanya boleh ada satu pod: strategi Recreate mematikan pod lama sebelum pod
-# baru menyala. Deploy = mengganti tag image di bawah.
+# baru menyala. Image `app` diisi kustomization.yaml.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -39,7 +39,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: web
-          image: 127.0.0.1:5000/timesheet/web:dd23b0d
+          image: app
           ports:
             - containerPort: 8000
           resources:

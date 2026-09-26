@@ -7,6 +7,10 @@ metadata:
   labels:
     platform/project: worklog
     platform/env: dev
+  annotations:
+    # Menghapus namespace berarti menghapus semua isinya, termasuk volume data.
+    # Argo CD tidak boleh melakukannya; kalau memang perlu, hapus dengan tangan.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 ---
 # Satu namespace tidak boleh menghabiskan mesin milik namespace lain. Angka ini
 # muat untuk lima service Spring Boot di sekitar 400 MB.

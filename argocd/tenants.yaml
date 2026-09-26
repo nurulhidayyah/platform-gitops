@@ -1,0 +1,30 @@
+# Pagar untuk semua Application service (dibuat ApplicationSet `services`).
+# Isi folder services/ ditulis Jenkins dari repo service, jadi batasnya
+# ditetapkan di sini, bukan dipercayakan ke repo itu: hanya boleh masuk ke
+# namespace <project>-dev atau <project>-prod, tidak boleh membuat objek
+# tingkat cluster, dan tidak boleh mengubah kuota, batas bawaan, NetworkPolicy,
+# maupun izin RBAC yang dipasang platform di namespace-nya.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: tenants
+  namespace: argocd
+  annotations:
+    # Harus ada sebelum Application yang memakainya dibuat.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: Service milik project, di-deploy dari platform-gitops/services
+  sourceRepos:
+    - https://github.com/nurulhidayyah/platform-gitops.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*-dev"
+    - server: https://kubernetes.default.svc
+      namespace: "*-prod"
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - { group: "", kind: ResourceQuota }
+    - { group: "", kind: LimitRange }
+    - { group: networking.k8s.io, kind: NetworkPolicy }
+    - { group: rbac.authorization.k8s.io, kind: Role }
+    - { group: rbac.authorization.k8s.io, kind: RoleBinding }

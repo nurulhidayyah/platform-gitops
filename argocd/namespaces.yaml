@@ -1,0 +1,21 @@
+# Jatah setiap project di setiap environment: namespace, kuota, batas bawaan,
+# dan NetworkPolicy. Satu berkas per namespace di folder namespaces/, ditulis
+# manusia sekali saat project baru lahir. Namespace-nya sendiri tidak pernah
+# dihapus Argo CD (lihat anotasinya).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: namespaces
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nurulhidayyah/platform-gitops.git
+    targetRevision: main
+    path: namespaces
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

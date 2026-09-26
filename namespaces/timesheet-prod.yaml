@@ -7,6 +7,10 @@ metadata:
   labels:
     platform/project: timesheet
     platform/env: prod
+  annotations:
+    # Menghapus namespace berarti menghapus semua isinya, termasuk volume data.
+    # Argo CD tidak boleh melakukannya; kalau memang perlu, hapus dengan tangan.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 ---
 # Satu namespace tidak boleh menghabiskan mesin milik namespace lain. Angka ini
 # cukup untuk satu aplikasi web kecil.

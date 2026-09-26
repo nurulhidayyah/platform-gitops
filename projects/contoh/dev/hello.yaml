@@ -19,7 +19,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: hello
-          image: 127.0.0.1:5000/contoh/hello:896582c
+          image: 127.0.0.1:5000/contoh/hello:7c2de65
           ports:
             - containerPort: 8080
           env:

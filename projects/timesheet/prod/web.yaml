@@ -6,6 +6,11 @@ kind: PersistentVolumeClaim
 metadata:
   name: web-data
   namespace: timesheet-prod
+  annotations:
+    # Data sungguhan: Argo CD tidak boleh membuang PVC ini, baik saat berkasnya
+    # hilang dari repo maupun saat Application-nya dihapus. PV di bawahnya juga
+    # sudah diubah ke reclaimPolicy Retain.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
   resources:

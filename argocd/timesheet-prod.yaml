@@ -1,0 +1,19 @@
+# Project timesheet di environment prod: Argo CD membuat isi cluster sama dengan
+# folder projects/timesheet/prod, termasuk namespace, kuota, dan NetworkPolicy-nya.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: timesheet-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nurulhidayyah/platform-gitops.git
+    targetRevision: main
+    path: projects/timesheet/prod
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

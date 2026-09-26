@@ -1,0 +1,77 @@
+# Jatah project timesheet di environment prod: namespace, kuota, batas bawaan per
+# container, dan isolasi jaringan. Aturan nama: README platform-infra.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: timesheet-prod
+  labels:
+    platform/project: timesheet
+    platform/env: prod
+---
+# Satu namespace tidak boleh menghabiskan mesin milik namespace lain. Angka ini
+# cukup untuk satu aplikasi web kecil.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: jatah
+  namespace: timesheet-prod
+spec:
+  hard:
+    requests.cpu: 500m
+    requests.memory: 512Mi
+    limits.cpu: "1"
+    limits.memory: 1Gi
+    pods: "5"
+---
+# Dengan ResourceQuota aktif, pod tanpa requests/limits ditolak. LimitRange
+# memberi nilai bawaan supaya manifest yang lupa menulisnya tetap bisa jalan.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: bawaan
+  namespace: timesheet-prod
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        cpu: 500m
+        memory: 512Mi
+---
+# Pod di namespace ini hanya menerima lalu lintas dari sesama pod di namespace
+# ini, dari Traefik di kube-system, dan dari host (10.42.0.1), tempat
+# Prometheus berjalan. Keluar, pod boleh ke sesama namespace, ke DNS cluster,
+# dan ke luar cluster, tapi tidak ke pod di namespace lain.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: isolasi-namespace
+  namespace: timesheet-prod
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - ipBlock:
+            cidr: 10.42.0.1/32
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.42.0.0/16

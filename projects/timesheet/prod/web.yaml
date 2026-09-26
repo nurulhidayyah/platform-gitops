@@ -1,0 +1,104 @@
+# timesheet-app. Datanya (SQLite dan template aktif) tinggal di volume, jadi
+# hanya boleh ada satu pod: strategi Recreate mematikan pod lama sebelum pod
+# baru menyala. Deploy = mengganti tag image di bawah.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: web-data
+  namespace: timesheet-prod
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: timesheet-prod
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+      containers:
+        - name: web
+          image: 127.0.0.1:5000/timesheet/web:belum-ada
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: uploads
+              mountPath: /app/uploads
+            - name: outputs
+              mountPath: /app/outputs
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: web-data
+        - name: uploads
+          emptyDir: {}
+        - name: outputs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: timesheet-prod
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+# Hostname lama dipertahankan. Selama DNS-nya masih menunjuk ke nginx (sampai
+# Fase D), aturan ini belum menerima lalu lintas apa pun.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: timesheet-prod
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: timesheet.hostingskuy.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80

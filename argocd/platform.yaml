@@ -1,0 +1,19 @@
+# Objek milik platform sendiri di dalam cluster (bukan milik project mana pun):
+# izin Prometheus membaca cluster, dan sejenisnya.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nurulhidayyah/platform-gitops.git
+    targetRevision: main
+    path: platform
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

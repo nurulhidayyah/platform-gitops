@@ -41,7 +41,8 @@ spec:
         memory: 512Mi
 ---
 # Pod di namespace ini hanya menerima lalu lintas dari sesama pod di namespace
-# ini dan dari Traefik di kube-system. Keluar, pod boleh ke sesama namespace,
+# ini, dari Traefik di kube-system, dan dari host (10.42.0.1), tempat
+# Prometheus berjalan untuk mengambil metrik. Keluar, pod boleh ke sesama namespace,
 # ke DNS cluster, dan ke luar cluster (datastore di 172.30.0.1, internet), tapi
 # tidak ke pod di namespace lain.
 apiVersion: networking.k8s.io/v1
@@ -58,6 +59,8 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+        - ipBlock:
+            cidr: 10.42.0.1/32
   egress:
     - to:
         - podSelector: {}

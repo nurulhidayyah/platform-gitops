@@ -1,0 +1,49 @@
+# Prometheus berjalan di luar cluster (Compose, network host) dan membaca
+# cluster lewat API server dengan ServiceAccount ini. Izinnya hanya membaca:
+# daftar pod dan node untuk menemukan target, dan metrik container dari kubelet.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: platform
+---
+# Token berumur panjang untuk ServiceAccount di atas. Isinya diisi Kubernetes
+# sendiri, bukan dari Git; scripts/k8s-prometheus-token.sh di platform-infra
+# menyalinnya ke berkas yang dibaca Prometheus.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prometheus-token
+  namespace: platform
+  annotations:
+    kubernetes.io/service-account.name: prometheus
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platform-prometheus
+rules:
+  - apiGroups: [""]
+    resources: [nodes, nodes/proxy, nodes/metrics, pods, services, endpoints]
+    verbs: [get, list, watch]
+  - nonResourceURLs: [/metrics]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platform-prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: platform-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: platform

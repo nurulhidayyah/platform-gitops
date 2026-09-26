@@ -1,0 +1,75 @@
+# Jatah project contoh di environment dev: namespace, kuota, batas bawaan per
+# container, dan isolasi jaringan. Aturan nama: README platform-infra.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: contoh-dev
+  labels:
+    platform/project: contoh
+    platform/env: dev
+---
+# Satu namespace tidak boleh menghabiskan mesin milik namespace lain. Angka ini
+# cukup untuk satu dua service contoh.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: jatah
+  namespace: contoh-dev
+spec:
+  hard:
+    requests.cpu: 500m
+    requests.memory: 512Mi
+    limits.cpu: "1"
+    limits.memory: 1Gi
+    pods: "5"
+---
+# Dengan ResourceQuota aktif, pod tanpa requests/limits ditolak. LimitRange
+# memberi nilai bawaan supaya manifest yang lupa menulisnya tetap bisa jalan.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: bawaan
+  namespace: contoh-dev
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        cpu: 500m
+        memory: 512Mi
+---
+# Pod di namespace ini hanya menerima lalu lintas dari sesama pod di namespace
+# ini dan dari Traefik di kube-system. Keluar, pod boleh ke sesama namespace,
+# ke DNS cluster, dan ke luar cluster (datastore di 172.30.0.1, internet), tapi
+# tidak ke pod di namespace lain.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: isolasi-namespace
+  namespace: contoh-dev
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.42.0.0/16

@@ -14,6 +14,11 @@ spec:
     metadata:
       labels:
         app: hello
+      # Prometheus platform mengambil metrik aplikasi dari sini.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /actuator/prometheus
     spec:
       securityContext:
         runAsNonRoot: true
@@ -25,6 +30,10 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: -XX:MaxRAMPercentage=75
+            # Jaeger platform, dilihat dari dalam cluster. Di laptop, aplikasi
+            # memakai bawaannya: localhost:4318 lewat SSH port forwarding.
+            - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT
+              value: http://172.30.0.1:4318/v1/traces
           resources:
             requests:
               cpu: 100m

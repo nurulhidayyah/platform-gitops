@@ -34,7 +34,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: web
-          image: 127.0.0.1:5000/timesheet/web:belum-ada
+          image: 127.0.0.1:5000/timesheet/web:dd23b0d
           ports:
             - containerPort: 8000
           resources:

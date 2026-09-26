@@ -1,0 +1,8 @@
+# Repo ini publik: Secret tidak pernah di-commit.
+*.env
+secrets/
+
+# Editor dan OS
+.idea/
+.vscode/
+.DS_Store

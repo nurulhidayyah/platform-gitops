@@ -31,12 +31,16 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          envFrom:
+            # Non-secret switches flipped with kubectl, without a build (see
+            # README). Optional: without it the pod runs on app/main.py
+            # defaults. Keys here must not also appear under env, which wins.
+            - configMapRef:
+                name: docgen-config
+                optional: true
           env:
             - name: OTLP_ENDPOINT
               value: http://172.30.0.1:4318
-            # Swagger at /docs; reachable only through kubectl port-forward. "false" hides it.
-            - name: SWAGGER_ENABLED
-              value: "true"
           resources:
             requests:
               cpu: 50m

@@ -7,4 +7,4 @@ resources:
 images:
   - name: app
     newName: 127.0.0.1:5000/worklog/auth
-    newTag: "5721ccd"
+    newTag: "2a372cf"

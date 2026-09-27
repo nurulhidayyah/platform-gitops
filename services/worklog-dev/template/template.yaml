@@ -34,6 +34,12 @@ spec:
             # PG_* and S3_* from `make tenant-secret`. S3 host defaults to DB_HOST.
             - secretRef:
                 name: template-platform
+            # Non-secret switches flipped with kubectl, without a build (see
+            # README). Optional: without it the pod runs on application.yaml
+            # defaults. Keys here must not also appear under env, which wins.
+            - configMapRef:
+                name: template-config
+                optional: true
           env:
             - name: DB_HOST
               value: 172.30.0.1
@@ -42,9 +48,6 @@ spec:
             # auth's Service in the same namespace; tokens are checked against its keys.
             - name: AUTH_JWKS_URI
               value: http://auth/auth/.well-known/jwks.json
-            # Swagger UI on the Dev domain, for the FE team. Set to "false" to hide it.
-            - name: SWAGGER_ENABLED
-              value: "true"
             - name: JAVA_TOOL_OPTIONS
               value: -XX:MaxRAMPercentage=75
           resources:

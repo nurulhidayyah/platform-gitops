@@ -35,15 +35,17 @@ spec:
             # PG_* and REDIS_* from `make tenant-secret`.
             - secretRef:
                 name: auth-platform
+            # Non-secret switches flipped with kubectl, without a build (see
+            # README). Optional: without it the pod runs on application.yaml
+            # defaults. Keys here must not also appear under env, which wins.
+            - configMapRef:
+                name: auth-config
+                optional: true
           env:
             - name: DB_HOST
               value: 172.30.0.1
             - name: OTLP_ENDPOINT
               value: http://172.30.0.1:4318
-            # Swagger UI on the Dev domain, for the FE team. Set to "true" to show it.
-            # It lives here, not in the auth-platform Secret: env wins over envFrom.
-            - name: SWAGGER_ENABLED
-              value: "false"
             - name: JAVA_TOOL_OPTIONS
               value: -XX:MaxRAMPercentage=75
           resources:

@@ -1,0 +1,10 @@
+# Ditulis Jenkins dari deploy/ repo web; jangan diubah tangan.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: worklog-dev
+resources:
+  - web.yaml
+images:
+  - name: app
+    newName: 127.0.0.1:5000/worklog/web
+    newTag: "b2fa70f"

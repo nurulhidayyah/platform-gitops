@@ -14,6 +14,8 @@ metadata:
 ---
 # Satu namespace tidak boleh menghabiskan mesin milik namespace lain. Angka ini
 # muat untuk lima service Spring Boot di sekitar 400 MB.
+# Limits sengaja lebih longgar dari requests: RollingUpdate menyalakan pod
+# pengganti sebelum mematikan yang lama, dan pod itu juga dihitung kuota.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -23,8 +25,8 @@ spec:
   hard:
     requests.cpu: "2"
     requests.memory: 2Gi
-    limits.cpu: "3"
-    limits.memory: 3Gi
+    limits.cpu: "6"
+    limits.memory: 5Gi
     pods: "20"
 ---
 # Dengan ResourceQuota aktif, pod tanpa requests/limits ditolak. LimitRange

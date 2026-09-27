@@ -43,6 +43,11 @@ spec:
             - name: AUTH_JWKS_URI
               value: http://auth/auth/.well-known/jwks.json
             # Swagger UI on the Dev domain, for the FE team. Set to "false" to hide it.
+            # Services in the same namespace that make documents.
+            - name: TEMPLATE_URI
+              value: http://template/templates
+            - name: DOCGEN_URI
+              value: http://docgen
             - name: SWAGGER_ENABLED
               value: "true"
             - name: JAVA_TOOL_OPTIONS

@@ -1,0 +1,110 @@
+# Headlamp: UI web untuk seluruh isi cluster (namespace, pod, log, Secret,
+# ConfigMap), padanan konsol OpenShift. Argo CD hanya menampilkan objek dari
+# Git; Headlamp menampilkan dan mengedit semuanya, termasuk Secret tenant dan
+# ConfigMap sakelar yang sengaja tidak ada di Git.
+#
+# Tidak punya alamat publik: Service ClusterIP tetap 10.43.0.82, dibuka dari PC
+# lewat LocalForward seperti Argo CD. Login memakai token ServiceAccount
+# headlamp-admin (cluster-admin); ambil dengan:
+#   kubectl -n headlamp get secret headlamp-admin -o jsonpath='{.data.token}' | base64 -d
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: headlamp
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp-admin
+  namespace: headlamp
+---
+# Setara admin konsol OCP. Aman karena UI hanya terjangkau lewat SSH, dan token
+# ini tidak pernah ada di Git: controller Kubernetes yang mengisinya.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: headlamp-admin
+    namespace: headlamp
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: headlamp-admin
+  namespace: headlamp
+  annotations:
+    kubernetes.io/service-account.name: headlamp-admin
+type: kubernetes.io/service-account-token
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headlamp
+  namespace: headlamp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: headlamp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: headlamp
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+      containers:
+        - name: headlamp
+          image: ghcr.io/headlamp-k8s/headlamp:v0.45.0
+          args:
+            - -in-cluster
+            - -plugins-dir=/headlamp/plugins
+          ports:
+            - name: http
+              containerPort: 4466
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: headlamp
+  namespace: headlamp
+spec:
+  type: ClusterIP
+  # Alamat tetap supaya LocalForward di PC tidak basi; 10.43.0.80 Traefik,
+  # 10.43.0.81 Argo CD.
+  clusterIP: 10.43.0.82
+  selector:
+    app.kubernetes.io/name: headlamp
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -40,9 +40,10 @@ spec:
               value: 172.30.0.1
             - name: OTLP_ENDPOINT
               value: http://172.30.0.1:4318
-            # Swagger UI on the Dev domain, for the FE team. Set to "false" to hide it.
+            # Swagger UI on the Dev domain, for the FE team. Set to "true" to show it.
+            # It lives here, not in the auth-platform Secret: env wins over envFrom.
             - name: SWAGGER_ENABLED
-              value: "true"
+              value: "false"
             - name: JAVA_TOOL_OPTIONS
               value: -XX:MaxRAMPercentage=75
           resources:

@@ -7,4 +7,4 @@ resources:
 images:
   - name: app
     newName: 127.0.0.1:5000/worklog/template
-    newTag: "02f56e0"
+    newTag: "7295d86"

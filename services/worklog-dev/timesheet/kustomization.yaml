@@ -7,4 +7,4 @@ resources:
 images:
   - name: app
     newName: 127.0.0.1:5000/worklog/timesheet
-    newTag: "65ecf4f"
+    newTag: "8614f31"

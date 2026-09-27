@@ -1,0 +1,10 @@
+# Ditulis Jenkins dari deploy/ repo docgen; jangan diubah tangan.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: worklog-dev
+resources:
+  - docgen.yaml
+images:
+  - name: app
+    newName: 127.0.0.1:5000/worklog/docgen
+    newTag: "63b0840"

@@ -1,0 +1,70 @@
+# docgen in <project>-<env>. The pipeline copies this folder to
+# platform-gitops/services/<ns>/docgen/ and writes a kustomization.yaml that
+# sets the namespace and replaces image `app` with the built tag.
+#
+# No Ingress and no Secret: docgen holds no data and is only called by
+# timesheet inside the namespace, at http://docgen/render.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docgen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docgen
+  template:
+    metadata:
+      labels:
+        app: docgen
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: docgen
+          image: app
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: OTLP_ENDPOINT
+              value: http://172.30.0.1:4318
+            # Swagger at /docs; reachable only through kubectl port-forward. "false" hides it.
+            - name: SWAGGER_ENABLED
+              value: "true"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              # openpyxl holds the whole workbook in memory.
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docgen
+spec:
+  selector:
+    app: docgen
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

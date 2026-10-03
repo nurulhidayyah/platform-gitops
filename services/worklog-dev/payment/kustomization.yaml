@@ -1,0 +1,10 @@
+# Ditulis Jenkins dari deploy/ repo payment; jangan diubah tangan.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: worklog-dev
+resources:
+  - payment.yaml
+images:
+  - name: app
+    newName: 127.0.0.1:5000/worklog/payment
+    newTag: "1f5d7dc"

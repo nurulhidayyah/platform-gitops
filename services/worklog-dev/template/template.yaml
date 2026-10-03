@@ -93,18 +93,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    # worklog is the public name; worklog-dev stays until every link has moved.
     - host: worklog.hostingskuy.cloud
-      http:
-        paths:
-          - path: /templates
-            pathType: Prefix
-            backend:
-              service:
-                name: template
-                port:
-                  name: http
-    - host: worklog-dev.hostingskuy.cloud
       http:
         paths:
           - path: /templates

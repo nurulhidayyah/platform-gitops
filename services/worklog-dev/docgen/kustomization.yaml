@@ -7,4 +7,4 @@ resources:
 images:
   - name: app
     newName: 127.0.0.1:5000/worklog/docgen
-    newTag: "7a2d08b"
+    newTag: "417d751"

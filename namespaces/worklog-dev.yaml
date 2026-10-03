@@ -26,7 +26,7 @@ spec:
     requests.cpu: "2"
     requests.memory: 2Gi
     limits.cpu: "8"
-    limits.memory: 5Gi
+    limits.memory: 6Gi
     pods: "20"
 ---
 # Dengan ResourceQuota aktif, pod tanpa requests/limits ditolak. LimitRange

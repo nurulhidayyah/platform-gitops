@@ -41,6 +41,12 @@ spec:
             - configMapRef:
                 name: auth-config
                 optional: true
+            # AUTH_MAIL_API_KEY (and optionally AUTH_MAIL_FROM) for Resend, made by
+            # hand (see README). Optional: without it no mail is sent and email
+            # verification is not required.
+            - secretRef:
+                name: auth-mail
+                optional: true
           env:
             - name: DB_HOST
               value: 172.30.0.1

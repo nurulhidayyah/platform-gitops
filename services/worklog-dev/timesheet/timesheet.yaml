@@ -54,6 +54,8 @@ spec:
               value: http://template/templates
             - name: DOCGEN_URI
               value: http://docgen
+            - name: PAYMENT_URI
+              value: http://payment/payments
             - name: JAVA_TOOL_OPTIONS
               value: -XX:MaxRAMPercentage=75
           resources:

@@ -40,6 +40,11 @@ spec:
             - secretRef:
                 name: payment-midtrans
                 optional: true
+            # PAYMENT_MAIL_API_KEY (Resend) for payment receipts, created by hand.
+            # Optional: without it no receipt is mailed.
+            - secretRef:
+                name: payment-mail
+                optional: true
             # Non-secret switches flipped with kubectl, without a build (see
             # README). Optional: without it the pod runs on application.yaml
             # defaults. Keys here must not also appear under env, which wins.

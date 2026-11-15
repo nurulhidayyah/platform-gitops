@@ -14,6 +14,11 @@ services/<project>-<env>/<service>/ manifest satu service, ditulis Jenkins
 platform/                           objek milik platform sendiri
 ```
 
+Website pelanggan hosting **tidak** ada di repo ini. Panel hosting
+(`platform/hosting-panel.yaml`, kodenya di repo `hosting-panel`) membuat satu
+namespace `site-<nama>` per website langsung lewat API Kubernetes, dan
+ServiceAccount-nya dipagari supaya hanya bisa menulis di namespace `site-*`.
+
 Setiap folder `services/<project>-<env>/<service>/` otomatis menjadi
 Application `<project>-<env>-<service>` lewat ApplicationSet `services`, di
 bawah AppProject `tenants` yang membatasi apa yang boleh dibuat.

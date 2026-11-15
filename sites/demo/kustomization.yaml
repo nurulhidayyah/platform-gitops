@@ -1,0 +1,14 @@
+# Website contoh: https://demo.hostingskuy.cloud
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: site-demo
+resources:
+  - ../../hosting/wordpress
+patches:
+  - target:
+      kind: Ingress
+      name: wordpress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: demo.hostingskuy.cloud

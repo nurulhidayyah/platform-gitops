@@ -1,0 +1,140 @@
+# Satu website WordPress. Kredensial database datang dari Secret `site-db`,
+# yang dibuat scripts/site.sh di platform-infra dan tidak pernah di-commit.
+#
+# Image resmi mendengar di port 80, yang tidak bisa dibuka tanpa root. Dua
+# berkas ini memindahkan Apache ke 8080 supaya pod bisa jalan sebagai www-data.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apache
+data:
+  ports.conf: |
+    Listen 8080
+  000-default.conf: |
+    <VirtualHost *:8080>
+      DocumentRoot /var/www/html
+      ErrorLog ${APACHE_LOG_DIR}/error.log
+      CustomLog ${APACHE_LOG_DIR}/access.log combined
+    </VirtualHost>
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: html
+  annotations:
+    # Berkas website pelanggan: tidak pernah dihapus Argo CD.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  replicas: 1
+  # Volume ReadWriteOnce dan kuota dua pod: pod lama dimatikan dulu.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 33
+        runAsGroup: 33
+        fsGroup: 33
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: wordpress
+          image: wordpress:7.1.4-php8.4-apache
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: site-db
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - name: html
+              mountPath: /var/www/html
+            - name: apache
+              mountPath: /etc/apache2/ports.conf
+              subPath: ports.conf
+            - name: apache
+              mountPath: /etc/apache2/sites-available/000-default.conf
+              subPath: 000-default.conf
+      volumes:
+        - name: html
+          persistentVolumeClaim:
+            claimName: html
+        - name: apache
+          configMap:
+            name: apache
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+spec:
+  selector:
+    app: wordpress
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: site-template.hostingskuy.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wordpress
+                port:
+                  name: http

@@ -1,0 +1,209 @@
+# Panel hosting (landing page, akun, pesanan, file manager) dari repo
+# hosting-panel. Panel membuat satu namespace site-<nama> per website
+# pelanggan langsung lewat API Kubernetes; website pelanggan tidak ada di
+# repo ini. Secret `panel-env` dibuat scripts/hosting-panel.sh di
+# platform-infra.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hosting
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: panel
+  namespace: hosting
+---
+# Hanya menulis, tidak membaca: panel tidak pernah perlu melihat Secret atau
+# objek lain di cluster. Di namespace mana ia boleh menulis dibatasi
+# ValidatingAdmissionPolicy di bawah, karena RBAC tidak bisa membatasi
+# berdasarkan awalan nama namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hosting-panel
+rules:
+  - apiGroups: [""]
+    resources: [namespaces, resourcequotas, limitranges, secrets, services, persistentvolumeclaims]
+    verbs: [create, patch, delete]
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [create, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies, ingresses]
+    verbs: [create, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hosting-panel
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: hosting-panel
+subjects:
+  - kind: ServiceAccount
+    name: panel
+    namespace: hosting
+---
+# Pagar panel: setiap tulisan dari ServiceAccount panel ditolak kecuali di
+# namespace site-*. Kalau panel dibobol, platform dan namespace lain tetap
+# tidak bisa disentuh.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: hosting-panel-site-only
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["*"]
+        apiVersions: ["*"]
+        operations: [CREATE, UPDATE, DELETE]
+        resources: ["*"]
+  matchConditions:
+    - name: dari-panel
+      expression: request.userInfo.username == "system:serviceaccount:hosting:panel"
+  validations:
+    - expression: >-
+        request.resource.resource == "namespaces"
+        ? request.name.startsWith("site-")
+        : request.namespace.startsWith("site-")
+      message: panel hosting hanya boleh menulis di namespace site-*
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: hosting-panel-site-only
+spec:
+  policyName: hosting-panel-site-only
+  validationActions: [Deny]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hanya-dari-traefik
+  namespace: hosting
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - { protocol: TCP, port: 8000 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: panel
+  namespace: hosting
+  labels:
+    app: panel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: panel
+  template:
+    metadata:
+      labels:
+        app: panel
+    spec:
+      serviceAccountName: panel
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: panel
+          image: 127.0.0.1:5000/hosting/panel:1
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: panel-env
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            failureThreshold: 4
+          volumeMounts:
+            # Unggahan besar ditampung sementara di sini sebelum diteruskan.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: panel
+  namespace: hosting
+spec:
+  selector:
+    app: panel
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: panel
+  namespace: hosting
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: hostingskuy.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: panel
+                port:
+                  name: http
+    - host: www.hostingskuy.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: panel
+                port:
+                  name: http

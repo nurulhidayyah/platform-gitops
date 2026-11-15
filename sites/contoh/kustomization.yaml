@@ -1,0 +1,15 @@
+# https://contoh.hostingskuy.cloud — jenis php, paket pro.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: site-contoh
+resources:
+  - ../../hosting/php
+components:
+  - ../../hosting/plans/pro
+patches:
+  - target:
+      kind: Ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: contoh.hostingskuy.cloud

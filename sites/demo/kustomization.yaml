@@ -1,13 +1,14 @@
-# Website contoh: https://demo.hostingskuy.cloud
+# https://demo.hostingskuy.cloud — jenis wordpress, paket starter.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: site-demo
 resources:
   - ../../hosting/wordpress
+components:
+  - ../../hosting/plans/starter
 patches:
   - target:
       kind: Ingress
-      name: wordpress
     patch: |-
       - op: replace
         path: /spec/rules/0/host

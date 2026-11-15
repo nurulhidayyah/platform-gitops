@@ -1,5 +1,6 @@
+# Website WordPress siap pakai.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - namespace.yaml
+  - ../base
   - wordpress.yaml

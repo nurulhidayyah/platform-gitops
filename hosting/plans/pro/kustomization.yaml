@@ -1,0 +1,27 @@
+# Paket pro: container website 500m CPU dan 512Mi memori, disk 5Gi.
+# Ukuran disk hanya berlaku saat website dibuat: volume local-path tidak bisa
+# diperbesar, jadi naik paket tidak mengubah volume yang sudah ada.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      kind: ResourceQuota
+      name: jatah
+    patch: |-
+      - { op: replace, path: /spec/hard/limits.cpu, value: "750m" }
+      - { op: replace, path: /spec/hard/limits.memory, value: 640Mi }
+      - { op: replace, path: /spec/hard/requests.cpu, value: "200m" }
+      - { op: replace, path: /spec/hard/requests.memory, value: 352Mi }
+      - { op: replace, path: /spec/hard/requests.storage, value: 5Gi }
+  - target:
+      kind: Deployment
+    patch: |-
+      - { op: replace, path: /spec/template/spec/containers/0/resources/limits/cpu, value: "500m" }
+      - { op: replace, path: /spec/template/spec/containers/0/resources/limits/memory, value: 512Mi }
+      - { op: replace, path: /spec/template/spec/containers/0/resources/requests/cpu, value: "100m" }
+      - { op: replace, path: /spec/template/spec/containers/0/resources/requests/memory, value: 256Mi }
+  - target:
+      kind: PersistentVolumeClaim
+      name: html
+    patch: |-
+      - { op: replace, path: /spec/resources/requests/storage, value: 5Gi }

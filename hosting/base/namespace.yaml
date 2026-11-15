@@ -1,6 +1,6 @@
 # Jatah satu website: namespace, kuota, batas bawaan, dan isolasi jaringan.
 # Nama `site-template` dan namespace setiap objek diganti kustomization di
-# sites/<nama>/.
+# sites/<nama>/. Dipakai semua jenis website di hosting/.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -16,8 +16,9 @@ metadata:
     # tidak boleh melakukannya; kalau memang perlu, hapus dengan tangan.
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 ---
-# Paket terkecil: satu pod WordPress. Limits cukup untuk dua pod supaya ada
-# ruang saat pod diganti.
+# Angka di sini adalah paket starter; paket lain menimpanya lewat
+# hosting/plans/<paket>. Kuota sedikit lebih besar dari batas container
+# website supaya ada ruang untuk container pendamping.
 apiVersion: v1
 kind: ResourceQuota
 metadata:

@@ -1,0 +1,6 @@
+# Website kosong: pelanggan mengunggah berkas HTML/PHP miliknya sendiri.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+  - php.yaml

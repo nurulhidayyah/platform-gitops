@@ -59,6 +59,27 @@ spec:
         fsGroup: 33
         seccompProfile:
           type: RuntimeDefault
+      # Akar volume dimiliki root, dan image menolak mengisi folder yang bukan
+      # miliknya (tar gagal mengubah mode). Folder html/ dibuat lebih dulu
+      # sebagai www-data, lalu hanya folder itu yang dipasang ke WordPress.
+      initContainers:
+        - name: siapkan-volume
+          image: wordpress:7.1.4-php8.4-apache
+          command: [mkdir, -p, /volume/html]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+          volumeMounts:
+            - name: html
+              mountPath: /volume
       containers:
         - name: wordpress
           image: wordpress:7.1.4-php8.4-apache
@@ -95,6 +116,7 @@ spec:
           volumeMounts:
             - name: html
               mountPath: /var/www/html
+              subPath: html
             - name: apache
               mountPath: /etc/apache2/ports.conf
               subPath: ports.conf

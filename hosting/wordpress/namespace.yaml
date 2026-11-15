@@ -49,7 +49,7 @@ spec:
         memory: 256Mi
 ---
 # Masuk: hanya dari Traefik di kube-system. Keluar: DNS cluster, MySQL
-# platform di 172.30.0.1:3307, dan web di internet (80/443) untuk pembaruan
+# platform, dan web di internet (80/443) untuk pembaruan
 # WordPress dan plugin. Semua alamat privat lain, alamat publik node, dan port
 # lain (termasuk SMTP 25) tertutup, jadi website tidak bisa menjangkau website
 # lain, datastore platform, API Kubernetes, maupun mengirim spam.
@@ -79,11 +79,17 @@ spec:
       ports:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
+    # Pod memakai 172.30.0.1:3307, tapi Docker mengalihkan alamat itu ke
+    # container MySQL (port 3306 di jaringan 172.30.0.0/24) sebelum aturan ini
+    # diperiksa, jadi yang dibuka adalah tujuan sesudah pengalihan. Alamat
+    # host sendiri dikecualikan: port 3306 di sana milik MySQL lain.
     - to:
         - ipBlock:
-            cidr: 172.30.0.1/32
+            cidr: 172.30.0.0/24
+            except:
+              - 172.30.0.1/32
       ports:
-        - { protocol: TCP, port: 3307 }
+        - { protocol: TCP, port: 3306 }
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

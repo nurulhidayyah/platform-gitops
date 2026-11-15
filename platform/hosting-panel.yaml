@@ -127,7 +127,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: panel
-          image: 127.0.0.1:5000/hosting/panel:7
+          image: 127.0.0.1:5000/hosting/panel:8
           ports:
             - name: http
               containerPort: 8000

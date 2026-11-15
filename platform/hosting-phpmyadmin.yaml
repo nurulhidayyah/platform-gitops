@@ -1,0 +1,165 @@
+# phpMyAdmin untuk pelanggan hosting, di https://db.hostingskuy.cloud. Pelanggan
+# masuk dengan user dan kata sandi database website-nya (tertera di panel) dan
+# hanya melihat database miliknya. Dipisah dari panel di namespace sendiri:
+# aplikasi ini menghadap internet dan hanya perlu bicara dengan MySQL.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hosting-db
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+# Masuk hanya dari Traefik; keluar hanya ke MySQL platform (tujuan sesudah
+# Docker mengalihkan 172.30.0.1:3307 ke container). Tanpa DNS, tanpa internet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: hanya-mysql
+  namespace: hosting-db
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - { protocol: TCP, port: 80 }
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 172.30.0.0/24
+            except:
+              - 172.30.0.1/32
+      ports:
+        - { protocol: TCP, port: 3306 }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phpmyadmin
+  namespace: hosting-db
+data:
+  config.user.inc.php: |
+    <?php
+    // MySQL ini juga dipakai platform. Hanya user database website (site_*)
+    // yang boleh mencoba masuk dari internet; user lain ditolak sebelum
+    // sampai ke MySQL, jadi kata sandinya tidak bisa ditebak-tebak dari sini.
+    if (isset($_POST['pma_username']) && ! preg_match('/^site_[a-z0-9]{3,25}$/', (string) $_POST['pma_username'])) {
+        http_response_code(403);
+        exit('Masuk dengan user database website Anda (site_...), seperti tertera di panel hosting.');
+    }
+    $cfg['Servers'][1]['AllowRoot'] = false;
+    $cfg['Servers'][1]['hide_db'] = '^(information_schema|performance_schema)$';
+    $cfg['LoginCookieValidity'] = 3600;
+    $cfg['VersionCheck'] = false;
+    $cfg['SendErrorReports'] = 'never';
+    $cfg['ShowServerInfo'] = false;
+    $cfg['ShowPhpInfo'] = false;
+    $cfg['ShowChgPassword'] = false;
+    $cfg['ShowCreateDb'] = false;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+  namespace: hosting-db
+  labels:
+    app: phpmyadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 33
+        runAsGroup: 33
+        seccompProfile:
+          type: RuntimeDefault
+        # Image mendengar di port 80; sysctl ini membolehkannya tanpa root.
+        sysctls:
+          - name: net.ipv4.ip_unprivileged_port_start
+            value: "0"
+      containers:
+        - name: phpmyadmin
+          image: phpmyadmin:5.2.3-apache
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            - { name: PMA_HOST, value: "172.30.0.1" }
+            - { name: PMA_PORT, value: "3307" }
+            - { name: PMA_ABSOLUTE_URI, value: "https://db.hostingskuy.cloud/" }
+            - { name: UPLOAD_LIMIT, value: "64M" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phpmyadmin/config.user.inc.php
+              subPath: config.user.inc.php
+      volumes:
+        - name: config
+          configMap:
+            name: phpmyadmin
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin
+  namespace: hosting-db
+spec:
+  selector:
+    app: phpmyadmin
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: phpmyadmin
+  namespace: hosting-db
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: db.hostingskuy.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: phpmyadmin
+                port:
+                  name: http
